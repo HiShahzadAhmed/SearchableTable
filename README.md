@@ -43,6 +43,13 @@ class Item extends Model implements Searchable
 }
 
 ```
+NOTE: Change $this->YOUR_OWN_MODEL_COLUMN to your model column that have more priority e.g ($this->name, $this->title) etc.
+```php
+return new \Spatie\Searchable\SearchResult(
+       $this,
+       $this->YOUR_OWN_MODEL_COLUMN,
+    );
+```
 
 
 ### Preparing your Routes & Controller for searching
@@ -93,6 +100,12 @@ class ItemsController extends Controller
 }
 
 ```
+NOTE: Change the Model name in place of ['YOUR MODEL NAME'] & replace fileds name in place of foo, bar of coressponding array like ['title', 'address']
+```php
+->registerModel(['YOUR MODEL NAME']::class, ['foo', 'bar'])
+```
+
+
 
 
 ### Preparing for Render and Loading Views
