@@ -1,55 +1,39 @@
 # Searchable Table
 
-Searchable Table for Server side processing
-
-## Installation
-
-You can install the package via composer:
-
-```bash
-composer require spatie/laravel-searchable
-```
-
-
+Searchable Table for Server Side Processing
 
 ## Usage
 
-### Preparing your models
+### Creating a Trait Class
 
-You'll need to add a `getSearchResult` method to each searchable model that must return an instance of `SearchResult`. Here's how it could look like for a sample Item model.
+Create a folder in App direcotry with Traits (e.g. App/Traits).
+Create a new Class file with SearchModel.php
+Copy the follwing code and paste in the file
 
 ```php
+<?php
 
-namespace App\Models;
+namespace App\Traits;
+use App\Traits\SearchModel;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Spatie\Searchable\Searchable;
-use Spatie\Searchable\SearchResult;
-
-class Item extends Model implements Searchable
+trait SearchModel
 {
-    use HasFactory;
+    public function SearchModel($model, $columns, $table_filter_search = '')
+    {
+        $model = '\\App\\Models\\'.$model;
+        $bulder = $model::query();
 
-    public function getSearchResult(): SearchResult
-     {
-         return new \Spatie\Searchable\SearchResult(
-            $this,
-            $this->name,
-         );
-     }
-
-
+        foreach ($columns as $value) 
+        {
+            $bulder = $bulder->orWhere($value, 'LIKE', "%".$table_filter_search."%");
+        }
+        
+        return $bulder;
+    }
 }
 
 ```
-NOTE: Change $this->YOUR_OWN_MODEL_COLUMN to your model column that have more priority e.g ($this->name, $this->title) etc.
-```php
-return new \Spatie\Searchable\SearchResult(
-       $this,
-       $this->YOUR_OWN_MODEL_COLUMN,
-    );
-```
+
 
 
 ### Preparing your Routes & Controller for searching
@@ -69,28 +53,29 @@ Your Controller will be something like this with method
 namespace App\Http\Controllers;
   
 use Illuminate\Http\Request;
-use App\Models\Item;
-use Spatie\Searchable\Search;
+use App\Models\Item;  //ADD NEWLY CREATED TRAIT NAMESPACE
+use App\Traits\SearchModel;
 
 
 class ItemsController extends Controller
 {
 
+    use SearchModel; //CALL THE TRAIT IN CONTROLLER
 
     public function items(Request $request)
     {
+
 
         #Request from AJAX and RENDER Result View
         if ($request->ajax()) 
         {
 
             #GO FOR SPECIFIC MODEL FOR SEARCHABLE INTERFACES to add getSearchResult() METHOD
-            $searchResults = (new Search())
-               ->registerModel(Item::class, ['name', 'address'])
-               ->search($request->table_filter_search ?? ' ');
-
+            $searchResults = $this->SearchModel('Item', ['name', 'address'], $request->table_filter_search ?? '');
+            
             $searchResults = $searchResults->paginate($request->table_length_limit);
             
+            #RENDER & RETURN VIEW TO CLIENT SIDE
             return view('items_result', get_defined_vars());
         }
   
@@ -98,14 +83,23 @@ class ItemsController extends Controller
         return view('items');
     }
 }
-
 ```
 NOTE: Change the Model name in place of ['YOUR MODEL NAME'] & replace fileds name in place of foo, bar of coressponding array like ['title', 'address']
 ```php
-->registerModel(['YOUR MODEL NAME']::class, ['foo', 'bar'])
+$searchResults = $this->SearchModel(['YOUR MODEL NAME']', ['name', 'address'], $request->table_filter_search ?? '');
 ```
 
+NOTE: Don't forget to add trait Namespace & Trait in your Controller
 
+Namespace
+```bash
+use App\Traits\SearchModel;
+```
+
+Trait Name
+```bash
+use SearchModel;
+```
 
 
 ### Preparing for Render and Loading Views
@@ -138,126 +132,124 @@ The file will be something like this:
     </style>
     
     <div class="overlay-bg d-none"></div>
-      <div class="container py-4">
+        <div class="container py-4">
 
-          <div class="card shadow-sm">
-              <div class="card-body">
-                  <div class="row">
-                      <div class="col-lg-6 mb-2">
-                          <span>Show </span>
-                          <select name="table_length_limit" class="table_length_limit">
-                              <option value="15">15</option>
-                              <option value="25">25</option>
-                              <option value="50">50</option>
-                              <option value="100">100</option>
-                          </select>
-                           <span>entries</span>
-                      </div>
-                      <div class="col-lg-6 text-right">
-                           <span>Search: </span>
-                           <input type="text" name="table_filter_search" class="table_filter_search" value="{{ $request->table_filter_search ?? '' }}" class="">
-                      </div>
-                  </div>
-                  <!--RECORD WILL BE APPEND HERE in #append-record FROM RENDERED VIEW VIA AJAX-->
-                  <div id="append-record"></div>
-              </div>
-          </div>
-
-      </div>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-6 mb-2">
+                            <span>Show </span>
+                            <select name="table_length_limit" class="table_length_limit">
+                                <option value="15">15</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                             <span>entries</span>
+                        </div>
+                        <div class="col-lg-6 text-right">
+                             <span>Search: </span>
+                             <input type="text" name="table_filter_search" class="table_filter_search" value="{{ $request->table_filter_search ?? '' }}" class="">
+                        </div>
+                    </div>
+                    <!--RECORD WILL BE APPEND HERE in #append-record FROM RENDERED VIEW VIA AJAX-->
+                    <div id="append-record"></div>
+                </div>
+            </div>
+        </div>
       
       <script>
-        // SET DEFAULT TABLE LENGTH LIMIT
-        $table_length_limit  = 15;
+    // SET DEFAULT TABLE LENGTH LIMIT
+    $table_length_limit  = 15;
 
 
 
-        // LOAD RECORD ON PAGE LOAD FIRST TIME
-        $(document).ready(function(){
-            loadRecords();
-        });
+    // LOAD RECORD ON PAGE LOAD FIRST TIME
+    $(document).ready(function(){
+        loadRecords();
+    });
 
-
-        // LOAD RECORD FUNCTION
-        function loadRecords(){
-            $.ajax({
-                    url: '?table_length_limit=' + $table_length_limit,
-                    type: "get",
-                    datatype: "html"
-                }).done(function(data){
-                    $("#append-record").empty().html(data);
-                }).fail(function(jqXHR, ajaxOptions, thrownError){
-                    loadRecords();
-                });
-        }
-
-
-        // GET DATA FROM SERVER EVENT
-        function getData(page){
-            $.ajax({
-                    url: '?page=' + page + '&table_length_limit=' + $('.table_length_limit').val(),
-                    type: "get",
-                    datatype: "html"
-                }).done(function(data){
-                    $("#append-record").empty().html(data);
-                }).fail(function(jqXHR, ajaxOptions, thrownError){
-                    alert('No response from server');
-                });
-        }
-
-
-        // PAGINATION CLICK EVENT
-        $(document).on('click', '.pagination a',function(event){
-
-            event.preventDefault();
-
-            $('li').removeClass('active');
-            $(this).parent('li').addClass('active');
-
-            var myurl = $(this).attr('href');
-            var page=$(this).attr('href').split('page=')[1];
-            getData(page);
-
-        });
-
-
-
-        // TABLE LENGTH CHANGE EVENT
-        $(document).on('change', '.table_length_limit',function(event){
-            $('.overlay-bg').removeClass('d-none');
-            $.ajax(
-            {
-                url: '?table_length_limit=' + $(this).val(),
+    
+    // LOAD RECORD FUNCTION
+    function loadRecords(){
+        $.ajax({
+                url: '?table_length_limit=' + $table_length_limit,
                 type: "get",
                 datatype: "html"
             }).done(function(data){
                 $("#append-record").empty().html(data);
-                $('.overlay-bg').addClass('d-none');
             }).fail(function(jqXHR, ajaxOptions, thrownError){
-                  alert('No response from server');
+                loadRecords();
             });
+    }
 
-        });    
 
-        //TABLE FILTER SEARCH BOX EVENT
-        $(document).on('keyup', '.table_filter_search',function(event){
-
-            $('.overlay-bg').removeClass('d-none');
-
-            $.ajax({
-                    url: '?table_filter_search='+$(this).val()+'&table_length_limit=' + $('.table_length_limit').val(),
-                    type: "get",
-                    datatype: "html"
+    // GET DATA FROM SERVER EVENT
+    function getData(page){
+        $.ajax({
+                url: '?page=' + page + '&table_length_limit=' + $('.table_length_limit').val(),
+                type: "get",
+                datatype: "html"
             }).done(function(data){
-                    $("#append-record").empty().html(data);
-                    $('.overlay-bg').addClass('d-none');
+                $("#append-record").empty().html(data);
             }).fail(function(jqXHR, ajaxOptions, thrownError){
-                    alert('No response from server');
+                alert('No response from server');
             });
+    }
 
+
+    // PAGINATION CLICK EVENT
+    $(document).on('click', '.pagination a',function(event){
+
+        event.preventDefault();
+  
+        $('li').removeClass('active');
+        $(this).parent('li').addClass('active');
+  
+        var myurl = $(this).attr('href');
+        var page=$(this).attr('href').split('page=')[1];
+        getData(page);
+
+    });
+  
+
+
+    // TABLE LENGTH CHANGE EVENT
+    $(document).on('change', '.table_length_limit',function(event){
+        $('.overlay-bg').removeClass('d-none');
+        $.ajax(
+        {
+            url: '?table_length_limit=' + $(this).val(),
+            type: "get",
+            datatype: "html"
+        }).done(function(data){
+            $("#append-record").empty().html(data);
+            $('.overlay-bg').addClass('d-none');
+        }).fail(function(jqXHR, ajaxOptions, thrownError){
+              alert('No response from server');
         });
 
+    });    
 
-    </script>
+    //TABLE FILTER SEARCH BOX EVENT
+    $(document).on('keyup', '.table_filter_search',function(event){
+        
+        $('.overlay-bg').removeClass('d-none');
+        
+        $.ajax({
+                url: '?table_filter_search='+$(this).val()+'&table_length_limit=' + $('.table_length_limit').val(),
+                type: "get",
+                datatype: "html"
+        }).done(function(data){
+                $("#append-record").empty().html(data);
+                $('.overlay-bg').addClass('d-none');
+        }).fail(function(jqXHR, ajaxOptions, thrownError){
+                alert('No response from server');
+        });
+
+    });
+
+</script>
 
 ```
 
@@ -267,28 +259,32 @@ The file will be something like this:
 
 ```blade
 
-        <table class="table table-bordered table-striped table-sm">
+       <table class="table table-bordered table-striped table-sm">
             <thead>
                 <tr>
                     <th>ID</th>
                     <th>Name</th>
                     <th>Address</th>
+                    <th>Bio</th>
+                    <th>Caste</th>
                     <th class="text-right">Action</th>
                 </tr>
             </thead>
             <tbody id="tag_container">
 
-                @forelse($searchResults as $value)
+                @forelse($searchResults as $item)
                 <tr>
                     <td>
-                        @if($value->searchable->id & 1)
-                            <span class="badge badge-dark">{{ $value->searchable->id }}</span>
+                        @if($item->id & 1)
+                            <span class="badge badge-dark">{{ $item->id }}</span>
                         @else
-                            <span class="badge badge-info">{{ $value->searchable->id }}</span>
+                            <span class="badge badge-info">{{ $item->id }}</span>
                         @endif
                     </td>
-                    <td>{{ $value->searchable->name }}</td>
-                    <td>{{ $value->searchable->address ?? 'N/A' }}</td>
+                    <td>{{ $item->name }}</td>
+                    <td>{{ $item->address ?? 'N/A' }}</td>
+                    <td>{{ $item->itemDetail->bio ?? 'N/A' }}</td>
+                    <td>{{ $item->itemDetail->caste ?? 'N/A' }}</td>
                     <td class="text-right">
                         <div class="btn-group">
                             <a href="#" class="btn btn-primary">Edit</a>
@@ -298,7 +294,7 @@ The file will be something like this:
                 </tr>
                 @empty
                     <tr class="text-center" >
-                        <td colspan="4">No records were found right now!</td>
+                        <td colspan="6">No records were found right now!</td>
                     </tr>
                 @endforelse
 
@@ -313,7 +309,6 @@ The file will be something like this:
                 {{ $searchResults->onEachSide(1)->links() }}
             </div>
         </div>
-
 
 ```
 
