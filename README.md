@@ -25,7 +25,7 @@ trait SearchModel
 
         foreach ($columns as $value) 
         {
-            $builder = $bulder->orWhere($value, 'LIKE', "%".$table_filter_search."%");
+            $builder = $builder->orWhere($value, 'LIKE', "%".$table_filter_search."%");
         }
         
         return $builder;
