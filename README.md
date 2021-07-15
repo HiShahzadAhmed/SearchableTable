@@ -21,14 +21,14 @@ trait SearchModel
     public function SearchModel($model, $columns, $table_filter_search = '')
     {
         $model = '\\App\\Models\\'.$model;
-        $bulder = $model::query();
+        $builder = $model::query();
 
         foreach ($columns as $value) 
         {
-            $bulder = $bulder->orWhere($value, 'LIKE', "%".$table_filter_search."%");
+            $builder = $bulder->orWhere($value, 'LIKE', "%".$table_filter_search."%");
         }
         
-        return $bulder;
+        return $builder;
     }
 }
 
