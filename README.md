@@ -232,22 +232,36 @@ The file will be something like this:
     });    
 
     //TABLE FILTER SEARCH BOX EVENT
+//TABLE FILTER SEARCH BOX EVENT
     $(document).on('keyup', '.table_filter_search',function(event){
         
-        $('.overlay-bg').removeClass('d-none');
+        var table_filter_search = $(this).val();
         
-        $.ajax({
-                url: '?table_filter_search='+$(this).val()+'&table_length_limit=' + $('.table_length_limit').val(),
-                type: "get",
-                datatype: "html"
-        }).done(function(data){
-                $("#append-record").empty().html(data);
-                $('.overlay-bg').addClass('d-none');
-        }).fail(function(jqXHR, ajaxOptions, thrownError){
-                alert('No response from server');
-        });
+        delay(function(){
+
+            $('.overlay-bg').removeClass('d-none');
+         
+            $.ajax({
+                    url: '?table_filter_search='+table_filter_search+'&table_length_limit=' + $('.table_length_limit').val(),
+                    type: "get",
+                    datatype: "html"
+            }).done(function(data){
+                    $("#append-record").empty().html(data);
+                    $('.overlay-bg').addClass('d-none');
+            }).fail(function(jqXHR, ajaxOptions, thrownError){
+                    alert('No response from server');
+            });
+        }, 1000 );
 
     });
+
+    let delay = (()=>{
+      let timer = 0;
+      return function(callback, ms){
+        clearTimeout (timer);
+        timer = setTimeout(callback, ms);
+      };
+    })();
 
 </script>
 
